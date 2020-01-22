@@ -48,6 +48,9 @@
     <ClInclude Include="SpotLight.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="PostRender.vs">
+      <Filter>Fichiers sources</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -86,6 +89,9 @@
       <Filter>Fichiers sources</Filter>
     </None>
     <None Include="Basic.vs">
+      <Filter>Fichiers sources</Filter>
+    </None>
+    <None Include="PostRender.fs">
       <Filter>Fichiers sources</Filter>
     </None>
   </ItemGroup>

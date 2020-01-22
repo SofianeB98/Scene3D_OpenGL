@@ -51,9 +51,19 @@ const float WIDTH = 1280;
 const float HEIGHT = 720;
 
 GLShader g_BasicShader;
+uint32_t basicProgram;
 GLuint VBO;
 GLuint IBO;
 GLuint VAO;
+
+GLShader g_ScreenShader;
+uint32_t screenProgram;
+GLuint VBOscreen;
+GLuint VAOscreen;
+
+GLuint FBO;
+GLuint TEX;
+GLuint TEX_DEP;
 
 //Projection Matrice
 Mat4* matriceProjection = new Mat4();
@@ -185,6 +195,12 @@ bool Initialize()
 	g_BasicShader.LoadVertexShader("Basic.vs");
 	g_BasicShader.LoadFragmentShader("Basic.fs");
 	g_BasicShader.Create();
+	basicProgram = g_BasicShader.GetProgram();
+	
+	g_ScreenShader.LoadVertexShader("PostRender.vs");
+	g_ScreenShader.LoadFragmentShader("PostRender.fs");
+	g_ScreenShader.Create();
+	screenProgram = g_ScreenShader.GetProgram();
 	
 #ifdef WIN32
 	wglSwapIntervalEXT(1);
@@ -194,20 +210,11 @@ bool Initialize()
 	std::cout << "Vendor : " << glGetString(GL_VENDOR) << std::endl;
 	std::cout << "Renderer : " << glGetString(GL_RENDERER) << std::endl;
 
-	glClearColor(0.5f, 0.5f, 0.5f, 1.f);
-	glEnable(GL_DEPTH_TEST);
-	
-	glFrontFace(GL_CCW);
-	glCullFace(GL_FRONT);
-	
-	glDepthFunc(GL_LESS);
-	
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
 	
 	#pragma region Initialisation_Du_Triangle
 	
-	uint32_t basicProgram = g_BasicShader.GetProgram();
 	glUseProgram(basicProgram);
 
 	LoadModel();
@@ -249,7 +256,63 @@ bool Initialize()
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-		
+
+	//Quad qui va prendre tout l'ecran !
+	float quadVertices[] = { 
+		// positions   // texCoords
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		-1.0f, -1.0f,  0.0f, 0.0f,
+		 1.0f, -1.0f,  1.0f, 0.0f,
+
+		-1.0f,  1.0f,  0.0f, 1.0f,
+		 1.0f, -1.0f,  1.0f, 0.0f,
+		 1.0f,  1.0f,  1.0f, 1.0f
+	};
+	glGenVertexArrays(1, &VAOscreen);
+	glGenBuffers(1, &VBOscreen);
+	glBindVertexArray(VAOscreen);
+	glBindBuffer(GL_ARRAY_BUFFER, VBOscreen);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+	
+	loc_position = glGetAttribLocation(screenProgram, "a_position");
+	glEnableVertexAttribArray(loc_position);
+	glVertexAttribPointer(loc_position, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), BUFFER_OFFSET(0));
+
+	texCoords = glGetAttribLocation(screenProgram, "a_texcoords");
+	glEnableVertexAttribArray(texCoords);
+	glVertexAttribPointer(texCoords, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), BUFFER_OFFSET(2 * sizeof(float)));
+
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
+#pragma region FBO
+	glGenFramebuffers(1, &FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+
+	glGenTextures(1, &TEX);
+	glBindTexture(GL_TEXTURE_2D, TEX);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, WIDTH, HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, TEX, 0);
+
+	glGenTextures(1, &TEX_DEP);
+	glBindTexture(GL_TEXTURE_2D, TEX_DEP);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, WIDTH, HEIGHT, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, TEX_DEP, 0);
+	
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "ERROR FRAME BUFFER NOT ALLOCATED !!" << std::endl;
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+#pragma endregion
+	
 	return true;
 }
 
@@ -257,6 +320,9 @@ void Shutdown()
 {
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &IBO);
+	glDeleteFramebuffers(1, &FBO);
+	glDeleteTextures(1, &TEX_DEP);
+	glDeleteTextures(1, &TEX);
 	glDeleteVertexArrays(1, &VAO);
 	g_BasicShader.Destroy();
 }
@@ -264,20 +330,42 @@ void Shutdown()
 void Render(GLFWwindow* window)
 {
 	// etape a. A vous de recuperer/passer les variables WIDTH/HEIGHT
+	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glFrontFace(GL_CCW);
+	glCullFace(GL_BACK);
+	glDepthFunc(GL_LESS);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	
 	glViewport(0, 0, WIDTH, HEIGHT);
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
-	//-----------------
-	//glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	
-	//-----------------
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
 
+	glUseProgram(basicProgram);
+	
 	glBindVertexArray(VAO);
 	
-	// dessine un triangle
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	
+}
+
+void RenderPostPro(GLFWwindow * window)
+{
+	glDisable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
+	glEnable(GL_FRAMEBUFFER_SRGB);
+	glClear(GL_COLOR_BUFFER_BIT);
+	
+	glUseProgram(screenProgram);
+	glActiveTexture(GL_TEXTURE0);
+	glBindVertexArray(VAOscreen);
+	glBindTexture(GL_TEXTURE_2D, TEX);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	
+	//glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
@@ -315,12 +403,12 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 
 void cursor_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	if(firstMouse)
-	{
-		lastXPos = xpos;
-		lastYPos = ypos;
-		firstMouse = false;
-	}
+	//if(firstMouse)
+	//{
+	//	lastXPos = xpos;
+	//	lastYPos = ypos;
+	//	firstMouse = false;
+	//}
 
 	float xoffset = xpos - lastXPos;
 	float yoffset = lastYPos - ypos;
@@ -349,6 +437,7 @@ void cursor_callback(GLFWwindow* window, double xpos, double ypos)
 	viewPos[0] = distanceBetweenCamAndTarget *std::cos(newTheta) * std::cos(newPhi);
 	viewPos[1] = distanceBetweenCamAndTarget *std::sin(newTheta);
 	viewPos[2] = distanceBetweenCamAndTarget *std::cos(newTheta) * std::sin(newPhi);
+
 }
 
 int main(void)
@@ -383,8 +472,6 @@ int main(void)
 
 	uint32_t basicProgram = g_BasicShader.GetProgram();
 	glUseProgram(basicProgram);
-	
-	
 	
 #pragma region MATRICES
 
@@ -422,6 +509,7 @@ int main(void)
 	int attenuationQuadratic = glGetUniformLocation(basicProgram, "u_light.quadratic");
 	
 	light->setPosition(-2.0f, 2.0f, -2.0f);
+	light->setAmbiant(0.86f, 0.765f, 0.1f);
 	
 	glUniform3fv(lightPositionLoc, 1, light->lightPosition);
 	glUniform3fv(lightColorLoc, 1, light->lightDiffuse);
@@ -506,15 +594,29 @@ int main(void)
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
 	{
-		matriceView->LookAt(viewPos, targetPos, upWorld);
-		glUniformMatrix4fv(viewLocation, 1, false, matriceView->matrice);
 
+		
 		//worldMatrix->RotateY(-30 * 3.14159265f / 180.0f * glfwGetTime());
 		//glUniformMatrix4fv(matriceWorld, 1, false, worldMatrix->matrice);
 
 		/* Render here */
 		Render(window);
 
+		glUniformMatrix4fv(matriceWorld, 1, false, worldMatrix->matrice);
+
+		matriceView->LookAt(viewPos, targetPos, upWorld);
+		glUniformMatrix4fv(viewLocation, 1, false, matriceView->matrice);
+		glUniform3fv(viewPosLoc, 1, viewPos);
+
+		glUniform3fv(lightPositionLoc, 1, light->lightPosition);
+
+		glUniform3fv(dlightPositionLoc, 1, dLight->lightDirection);
+
+		glUniform3fv(slightPositionLoc, 1, sLight->lightPosition);
+		glUniform3fv(slightDirLoc, 1, sLight->lightDirection);
+		
+		RenderPostPro(window);
+		
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
 
