@@ -53,7 +53,7 @@ void Model::LoadModel()
 
 	std::string warn;
 	std::string err;
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, modelPath, materialPath))
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, (const char*)modelPath, (const char*)materialPath))
 	{
 		throw std::runtime_error(warn + err);
 	}
@@ -85,6 +85,8 @@ void Model::LoadModel()
 		}
 	}
 
+	mat = new Material();
+	
 	if (materials.size() > 0)
 	{
 		mat->matAmbiant[0] = materials[0].ambient[0];

@@ -101,7 +101,49 @@ float theta = 0.f;
 float phi = 0.f;
 #pragma endregion 
 
-Model* suzanneModel = new Model("../data/suzanne3.obj", "Basic.vs", "Basic.fs", "../data/");
+Model* suzanneModel = new Model("../data/suzanne3.obj", "SuzanneShader.vs", "SuzanneShader.fs", "../data/");
+
+int loc_position = 0;
+int normals = 0;
+int texCoords = 0;
+int loc_color = 0;
+
+int matriceProjLocation = 0;
+int matriceWorld = 0;
+int viewLocation = 0;
+
+int lightPositionLoc = 0;
+int lightColorLoc = 0;
+int lightSpecLoc = 0;
+int ambiantStrLoc = 0;
+int attenuationConstant = 0;
+int attenuationLinear = 0;
+int attenuationQuadratic = 0;
+
+int dlightPositionLoc = 0;
+int dlightColorLoc = 0;
+int dlightSpecLoc = 0;
+int dambiantStrLoc = 0;
+
+int slightDirLoc = 0;
+int slightPositionLoc = 0;
+int slightColorLoc = 0;
+int slightSpecLoc = 0;
+int sambiantStrLoc = 0;
+int scutoffLoc = 0;
+int soutCutoffLoc = 0;
+
+int skyColorLoc = 0;
+int groundColorLoc = 0;
+
+int viewPosLoc = 0;
+
+int matDiffLoc = 0;
+int matAmbLoc = 0;
+int matSpecLoc = 0;
+int matShineLoc = 0;
+
+float aspect = WIDTH / HEIGHT;
 
 void CheckExistingVertex(Vertex3D &v)
 {
@@ -172,8 +214,6 @@ void LoadModel()
 		suzanneMat->matSpecular[1] = materials[0].specular[1];
 		suzanneMat->matSpecular[2] = materials[0].specular[2];
 
-		std::cout << "# shniness " << materials[0].shininess;
-		
 		suzanneMat->matShine = materials[0].shininess;
 	}
 }
@@ -192,10 +232,10 @@ bool Initialize()
 	suzProgram = g_SuzShader.GetProgram();
 	
 	g_ScreenShader.LoadVertexShader("PostRender.vs");
-	g_ScreenShader.LoadFragmentShader("BlackOrWhite.fs");
+	g_ScreenShader.LoadFragmentShader("InvertColor.fs");
 	g_ScreenShader.Create();
 	screenProgram = g_ScreenShader.GetProgram();
-	
+
 #ifdef WIN32
 	wglSwapIntervalEXT(1);
 #endif
@@ -204,11 +244,53 @@ bool Initialize()
 	std::cout << "Vendor : " << glGetString(GL_VENDOR) << std::endl;
 	std::cout << "Renderer : " << glGetString(GL_RENDERER) << std::endl;
 
+#pragma region Model Loading
+	suzanneModel->CreateAndLoadShader();
+	glGenVertexArrays(1, &suzanneModel->VAO);
+	glGenBuffers(1, &suzanneModel->VBO);
+
+	glBindVertexArray(suzanneModel->VAO);
+
+	suzanneModel->LoadModel();
+	
+	glBindBuffer(GL_ARRAY_BUFFER, suzanneModel->VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex3D) * suzanneModel->vertices.size(), &suzanneModel->vertices[0], GL_STATIC_DRAW);
+	glUseProgram(suzanneModel->basicProgram);
+
+	// ---------------- Position
+	loc_position = glGetAttribLocation(suzanneModel->basicProgram, "a_position");
+	glEnableVertexAttribArray(loc_position);
+	glVertexAttribPointer(loc_position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, x)));
+
+	// ---------------- Normals
+	normals = glGetAttribLocation(suzanneModel->basicProgram, "a_normals");
+	glEnableVertexAttribArray(normals);
+	glVertexAttribPointer(normals, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, nx)));
+
+	// ---------------- Texcoord
+	texCoords = glGetAttribLocation(suzanneModel->basicProgram, "a_texcoords");
+	glEnableVertexAttribArray(texCoords);
+	glVertexAttribPointer(texCoords, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, u)));
+
+	// ---------------- Couleur
+	loc_color = glGetAttribLocation(suzanneModel->basicProgram, "a_color");
+	glEnableVertexAttribArray(loc_color);
+	glVertexAttribPointer(loc_color, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, r)));
+
+	glGenBuffers(1, &suzanneModel->IBO);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, suzanneModel->IBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * suzanneModel->indices.size(), &suzanneModel->indices[0], GL_STATIC_DRAW);
+
+	glBindVertexArray(0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+#pragma endregion 
+	
+#pragma region Initialisation_Du_Singe
 	glGenVertexArrays(1, &VAO);
 	glBindVertexArray(VAO);
-	
-	#pragma region Initialisation_Du_Triangle
-	
 	glUseProgram(suzProgram);
 
 	LoadModel();
@@ -218,39 +300,39 @@ bool Initialize()
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex3D) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 
 	// ---------------- Position
-	int loc_position = glGetAttribLocation(suzProgram, "a_position");
+	loc_position = glGetAttribLocation(suzProgram, "a_position");
 	glEnableVertexAttribArray(loc_position);
 	glVertexAttribPointer(loc_position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, x)));
 
 	// ---------------- Normals
-	int normals = glGetAttribLocation(suzProgram, "a_normals");
+	normals = glGetAttribLocation(suzProgram, "a_normals");
 	glEnableVertexAttribArray(normals);
 	glVertexAttribPointer(normals, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, nx)));
 	
 	// ---------------- Texcoord
-	int texCoords = glGetAttribLocation(suzProgram, "a_texcoords");
+	texCoords = glGetAttribLocation(suzProgram, "a_texcoords");
 	glEnableVertexAttribArray(texCoords);
 	glVertexAttribPointer(texCoords, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, u)));
 	
 	// ---------------- Couleur
-	int loc_color = glGetAttribLocation(suzProgram, "a_color");
+	loc_color = glGetAttribLocation(suzProgram, "a_color");
 	glEnableVertexAttribArray(loc_color);
 	glVertexAttribPointer(loc_color, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, r)));
 
-	#pragma endregion
-	
-	#pragma region Initialisation_Du_IndexBuffer
+	//--IBO
 	glGenBuffers(1, &IBO);
 	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.size(), &indices[0], GL_STATIC_DRAW);
-	#pragma endregion
+	
 
 	glBindVertexArray(0);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+#pragma endregion
 
+#pragma region ScreenPP
 	//Quad qui va prendre tout l'ecran !
 	float quadVertices[] = { 
 		// positions   // texCoords
@@ -278,6 +360,7 @@ bool Initialize()
 
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+#pragma endregion 
 	
 #pragma region FBO
 	glGenFramebuffers(1, &FBO);
@@ -334,18 +417,34 @@ void Render(GLFWwindow* window)
 	glDepthFunc(GL_LESS);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
-	
+
 	glViewport(0, 0, WIDTH, HEIGHT);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(suzProgram);
-	
 	glBindVertexArray(VAO);
-	
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	//
+	glUniformMatrix4fv(matriceWorld, 1, false, worldMatrix->matrice);
+
+	matriceView->LookAt(viewPos, targetPos, upWorld);
+	glUniformMatrix4fv(viewLocation, 1, false, matriceView->matrice);
+	glUniform3fv(viewPosLoc, 1, viewPos);
+
+	glUniform3fv(lightPositionLoc, 1, light->lightPosition);
+
+	glUniform3fv(dlightPositionLoc, 1, dLight->lightDirection);
+
+	glUniform3fv(slightPositionLoc, 1, sLight->lightPosition);
+	glUniform3fv(slightDirLoc, 1, sLight->lightDirection);
+	//
 	
+	//glUseProgram(suzanneModel->basicProgram);
+	//glBindVertexArray(suzanneModel->VAO);
+	//glDrawElements(GL_TRIANGLES, suzanneModel->indices.size(), GL_UNSIGNED_INT, 0);
+
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
 void RenderPostPro(GLFWwindow * window)
@@ -454,11 +553,11 @@ int main(void)
 	
 #pragma region MATRICES
 
-	int matriceProjLocation = glGetUniformLocation(basicProgram, "u_matriceProjection");
-	int matriceWorld = glGetUniformLocation(basicProgram, "u_worldMatrix");
-	int viewLocation = glGetUniformLocation(basicProgram, "u_view");
+	matriceProjLocation = glGetUniformLocation(basicProgram, "u_matriceProjection");
+	matriceWorld = glGetUniformLocation(basicProgram, "u_worldMatrix");
+	viewLocation = glGetUniformLocation(basicProgram, "u_view");
 	
-	float aspect = WIDTH / HEIGHT;
+	aspect = WIDTH / HEIGHT;
 
 	matriceProjection->Perspective(45, aspect, 0.1f, 1000.0f);
 	glUniformMatrix4fv(matriceProjLocation, 1, false, matriceProjection->matrice);
@@ -478,14 +577,14 @@ int main(void)
 
 #pragma region LIGHT
 	// --- Point light
-	int lightPositionLoc = glGetUniformLocation(basicProgram, "u_light.lightPosition");
-	int lightColorLoc = glGetUniformLocation(basicProgram, "u_light.lightDiffuse");
-	int lightSpecLoc = glGetUniformLocation(basicProgram, "u_light.lightSpecular");
-	int ambiantStrLoc = glGetUniformLocation(basicProgram, "u_light.lightAmbient");
+	lightPositionLoc = glGetUniformLocation(basicProgram, "u_light.lightPosition");
+	lightColorLoc = glGetUniformLocation(basicProgram, "u_light.lightDiffuse");
+	lightSpecLoc = glGetUniformLocation(basicProgram, "u_light.lightSpecular");
+	ambiantStrLoc = glGetUniformLocation(basicProgram, "u_light.lightAmbient");
 	
-	int attenuationConstant = glGetUniformLocation(basicProgram, "u_light.constant");
-	int attenuationLinear = glGetUniformLocation(basicProgram, "u_light.linear");
-	int attenuationQuadratic = glGetUniformLocation(basicProgram, "u_light.quadratic");
+	attenuationConstant = glGetUniformLocation(basicProgram, "u_light.constant");
+	attenuationLinear = glGetUniformLocation(basicProgram, "u_light.linear");
+	attenuationQuadratic = glGetUniformLocation(basicProgram, "u_light.quadratic");
 	
 	light->setPosition(-2.0f, 2.0f, -2.0f);
 	light->setAmbiant(0.86f, 0.765f, 0.1f);
@@ -502,10 +601,10 @@ int main(void)
 	// --- End point light
 
 	// --- Directional light
-	int dlightPositionLoc = glGetUniformLocation(basicProgram, "u_dLight.lightDirection");
-	int dlightColorLoc = glGetUniformLocation(basicProgram, "u_dLight.lightDiffuse");
-	int dlightSpecLoc = glGetUniformLocation(basicProgram, "u_dLight.lightSpecular");
-	int dambiantStrLoc = glGetUniformLocation(basicProgram, "u_dLight.lightAmbient");
+	dlightPositionLoc = glGetUniformLocation(basicProgram, "u_dLight.lightDirection");
+	dlightColorLoc = glGetUniformLocation(basicProgram, "u_dLight.lightDiffuse");
+	dlightSpecLoc = glGetUniformLocation(basicProgram, "u_dLight.lightSpecular");
+	dambiantStrLoc = glGetUniformLocation(basicProgram, "u_dLight.lightAmbient");
 
 	dLight->setDirection(1.f, 1.0f, -1.f);
 	
@@ -516,15 +615,15 @@ int main(void)
 	// --- End directional light
 
 	// --- Spot Light
-	int slightDirLoc = glGetUniformLocation(basicProgram, "u_sLight.lightDirection");
-	int slightPositionLoc = glGetUniformLocation(basicProgram, "u_sLight.lightPosition");
+	slightDirLoc = glGetUniformLocation(basicProgram, "u_sLight.lightDirection");
+	slightPositionLoc = glGetUniformLocation(basicProgram, "u_sLight.lightPosition");
 	
-	int slightColorLoc = glGetUniformLocation(basicProgram, "u_sLight.lightDiffuse");
-	int slightSpecLoc = glGetUniformLocation(basicProgram, "u_sLight.lightSpecular");
-	int sambiantStrLoc = glGetUniformLocation(basicProgram, "u_sLight.lightAmbient");
+	slightColorLoc = glGetUniformLocation(basicProgram, "u_sLight.lightDiffuse");
+	slightSpecLoc = glGetUniformLocation(basicProgram, "u_sLight.lightSpecular");
+	sambiantStrLoc = glGetUniformLocation(basicProgram, "u_sLight.lightAmbient");
 
-	int scutoffLoc = glGetUniformLocation(basicProgram, "u_sLight.cutoff");
-	int soutCutoffLoc = glGetUniformLocation(basicProgram, "u_sLight.outerCutoff");
+	scutoffLoc = glGetUniformLocation(basicProgram, "u_sLight.cutoff");
+	soutCutoffLoc = glGetUniformLocation(basicProgram, "u_sLight.outerCutoff");
 	
 	sLight->setPosition(0,0,5.0f);
 	sLight->setDirection(0,0,-1.0f);
@@ -543,22 +642,22 @@ int main(void)
 	// --- End spot light
 
 	// --- Sky & Ground
-	int skyColorLoc= glGetUniformLocation(basicProgram, "u_skyColor");
-	int groundColorLoc = glGetUniformLocation(basicProgram, "u_groundColor");
+	skyColorLoc= glGetUniformLocation(basicProgram, "u_skyColor");
+	groundColorLoc = glGetUniformLocation(basicProgram, "u_groundColor");
 
 	glUniform3fv(skyColorLoc, 1, skyColor);
 	glUniform3fv(groundColorLoc, 1, groundColor);
 	// --- End Sky & ground
 #pragma endregion
 
-	int viewPosLoc = glGetUniformLocation(basicProgram, "u_viewPos");
+	viewPosLoc = glGetUniformLocation(basicProgram, "u_viewPos");
 	glUniform3fv(viewPosLoc, 1, viewPos);
 	
 #pragma region MATERIAL
-	int matDiffLoc = glGetUniformLocation(basicProgram, "u_material.diffuse");
-	int matAmbLoc = glGetUniformLocation(basicProgram, "u_material.ambient");
-	int matSpecLoc = glGetUniformLocation(basicProgram, "u_material.specular");
-	int matShineLoc = glGetUniformLocation(basicProgram, "u_material.shininess");
+	matDiffLoc = glGetUniformLocation(basicProgram, "u_material.diffuse");
+	matAmbLoc = glGetUniformLocation(basicProgram, "u_material.ambient");
+	matSpecLoc = glGetUniformLocation(basicProgram, "u_material.specular");
+	matShineLoc = glGetUniformLocation(basicProgram, "u_material.shininess");
 	
 	glUniform3fv(matDiffLoc, 1, suzanneMat->matDiffuse);
 	glUniform3fv(matAmbLoc, 1, suzanneMat->matAmbiant);
@@ -573,27 +672,9 @@ int main(void)
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
 	{
-
-		
-		//worldMatrix->RotateY(-30 * 3.14159265f / 180.0f * glfwGetTime());
-		//glUniformMatrix4fv(matriceWorld, 1, false, worldMatrix->matrice);
-
 		/* Render here */
 		Render(window);
 
-		glUniformMatrix4fv(matriceWorld, 1, false, worldMatrix->matrice);
-
-		matriceView->LookAt(viewPos, targetPos, upWorld);
-		glUniformMatrix4fv(viewLocation, 1, false, matriceView->matrice);
-		glUniform3fv(viewPosLoc, 1, viewPos);
-
-		glUniform3fv(lightPositionLoc, 1, light->lightPosition);
-
-		glUniform3fv(dlightPositionLoc, 1, dLight->lightDirection);
-
-		glUniform3fv(slightPositionLoc, 1, sLight->lightPosition);
-		glUniform3fv(slightDirLoc, 1, sLight->lightDirection);
-		
 		RenderPostPro(window);
 		
 		/* Swap front and back buffers */
