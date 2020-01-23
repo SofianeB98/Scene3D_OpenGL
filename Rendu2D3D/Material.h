@@ -8,7 +8,7 @@ struct Material
 	float matShine;
 
 	Material();
-	Material(Material& mat);
+	Material(const Material& mat);
 
 	Material& operator=(Material mat);
 	void swap(Material& mat);

@@ -12,7 +12,7 @@ Material::Material()
 	this->matShine = 5.f;
 }
 
-Material::Material(Material& mat)
+Material::Material(const Material& mat)
 {
 	for (int i = 0; i < 3; i++)
 	{

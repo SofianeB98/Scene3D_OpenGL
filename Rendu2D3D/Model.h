@@ -83,7 +83,7 @@ class Model
 	
 		Model();
 		Model(char* modelPath, char* vShaderName, char* fShaderName, char* materialPath);
-		//Model(Model& cop);
+		Model(const Model& cop);
 
 		Model& operator=(Model mod);
 		void swap(Model& mod);

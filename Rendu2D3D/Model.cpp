@@ -11,13 +11,13 @@ Model::Model()
 Model::Model(char* modelPath, char* vShaderName, char* fShaderName, char* materialPath)
 {
 	//Assignation des path et du shader name
-		this->modelPath = modelPath;
+	this->modelPath = modelPath;
 	this->materialPath = materialPath;
 	this->vShaderName = vShaderName;
 	this->fShaderName = fShaderName;
 
 	//Initialisation de la matrice du model
-		this->matriceTranslation = new Mat4();
+	this->matriceTranslation = new Mat4();
 	this->matriceRot = new Mat4();
 	this->matriceScale = new Mat4();
 
@@ -30,10 +30,91 @@ Model::Model(char* modelPath, char* vShaderName, char* fShaderName, char* materi
 	this->worldMatrix = this->worldMatrix->Multiply(*this->worldMatrix, *this->matriceTranslation);
 }
 
-//Model::Model(Model& cop)
-//{
-//	this->swap(cop);
-//}
+Model::Model(const Model& cop)
+{
+	std::cout << "copy" << std::endl;
+	this->matriceTranslation = new Mat4();
+	this->matriceRot = new Mat4();
+	this->matriceScale = new Mat4();
+	this->worldMatrix = new Mat4();
+
+	this->modelPath = cop.modelPath;
+	this->materialPath = cop.materialPath;
+
+	this->vertices.empty();
+
+	//for(int i = 0; i < cop.vertices.size(); i++)
+	//{
+	//	this->vertices.push_back(cop.vertices[i]);
+	//}
+
+	this->indices.empty();
+
+	//for (int i = 0; i < cop.indices.size(); i++)
+	//{
+	//	this->indices.push_back(cop.indices[i]);
+	//}
+
+	if(cop.mat != NULL)
+		this->mat = new Material(*cop.mat);
+
+	this->g_BasicShader = cop.g_BasicShader;
+	this->vShaderName = cop.vShaderName;
+	this->fShaderName = cop.fShaderName;
+	this->basicProgram = cop.basicProgram;
+
+	this->VBO = cop.VBO;
+	this->IBO = cop.IBO;
+	this->VAO = cop.VAO;
+
+	if(cop.mat != NULL)
+		this->CreateAndLoadShader();
+	
+	//this->matriceRot = cop.matriceRot;
+	//this->matriceScale = cop.matriceScale;
+	//this->matriceTranslation = cop.matriceTranslation;
+	//this->worldMatrix = cop.worldMatrix;
+	//
+	//this->loc_position= cop.loc_position;
+	//this->normals= cop.normals;
+	//this->texCoords= cop.texCoords;
+	//this->loc_color= cop.loc_color;
+
+	//this->matriceProjLocation= cop.matriceProjLocation;
+	//this->matriceWorld= cop.matriceWorld;
+	//this->viewLocation= cop.viewLocation;
+
+	//this->lightPositionLoc= cop.lightPositionLoc;
+	//this->lightColorLoc= cop.lightColorLoc;
+	//this->lightSpecLoc= cop.lightSpecLoc;
+	//this->ambiantStrLoc= cop.ambiantStrLoc;
+	//this->attenuationConstant= cop.attenuationConstant;
+	//this->attenuationLinear= cop.attenuationLinear;
+	//this->attenuationQuadratic= cop.attenuationQuadratic;
+
+	//this->dlightPositionLoc= cop.dlightPositionLoc;
+	//this->dlightColorLoc= cop.dlightColorLoc;
+	//this->dlightSpecLoc= cop.dlightSpecLoc;
+	//this->dambiantStrLoc= cop.dambiantStrLoc;
+
+	//this->slightDirLoc= cop.slightDirLoc;
+	//this->slightPositionLoc= cop.slightPositionLoc;
+	//this->slightColorLoc= cop.slightColorLoc;
+	//this->slightSpecLoc= cop.slightSpecLoc;
+	//this->sambiantStrLoc= cop.sambiantStrLoc;
+	//this->scutoffLoc= cop.scutoffLoc;
+	//this->soutCutoffLoc= cop.soutCutoffLoc;
+
+	//this->skyColorLoc= cop.skyColorLoc;
+	//this->groundColorLoc= cop.groundColorLoc;
+
+	//this->viewPosLoc= cop.viewPosLoc;
+
+	//this->matDiffLoc= cop.matDiffLoc;
+	//this->matAmbLoc= cop.matAmbLoc;
+	//this->matSpecLoc= cop.matSpecLoc;
+	//this->matShineLoc= cop.matShineLoc;
+}
 
 Model& Model::operator=(Model mod)
 {
@@ -191,14 +272,14 @@ void Model::CreateAndLoadShader()
 
 	//----Pos normal etc
 
-		loc_position = glGetAttribLocation(basicProgram, "a_position");
+	loc_position = glGetAttribLocation(basicProgram, "a_position");
 	normals = glGetAttribLocation(basicProgram, "a_normals");
 	texCoords = glGetAttribLocation(basicProgram, "a_texcoords");
 	loc_color = glGetAttribLocation(basicProgram, "a_color");
 
 	//----Matrice
 
-		matriceProjLocation = glGetUniformLocation(basicProgram, "u_matriceProjection");
+	matriceProjLocation = glGetUniformLocation(basicProgram, "u_matriceProjection");
 	matriceWorld = glGetUniformLocation(basicProgram, "u_worldMatrix");
 	viewLocation = glGetUniformLocation(basicProgram, "u_view");
 
@@ -206,7 +287,7 @@ void Model::CreateAndLoadShader()
 
 	//----Lights
 
-		lightPositionLoc = glGetUniformLocation(basicProgram, "u_light.lightPosition");
+	lightPositionLoc = glGetUniformLocation(basicProgram, "u_light.lightPosition");
 	lightColorLoc = glGetUniformLocation(basicProgram, "u_light.lightDiffuse");
 	lightSpecLoc = glGetUniformLocation(basicProgram, "u_light.lightSpecular");
 	ambiantStrLoc = glGetUniformLocation(basicProgram, "u_light.lightAmbient");
@@ -236,7 +317,7 @@ void Model::CreateAndLoadShader()
 	viewPosLoc = glGetUniformLocation(basicProgram, "u_viewPos");
 
 	//----Material
-		matDiffLoc = glGetUniformLocation(basicProgram, "u_material.diffuse");
+	matDiffLoc = glGetUniformLocation(basicProgram, "u_material.diffuse");
 	matAmbLoc = glGetUniformLocation(basicProgram, "u_material.ambient");
 	matSpecLoc = glGetUniformLocation(basicProgram, "u_material.specular");
 	matShineLoc = glGetUniformLocation(basicProgram, "u_material.shininess");
