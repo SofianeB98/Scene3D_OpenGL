@@ -1,28 +1,7 @@
-//
-//
-//
-
-// GLEW_STATIC force le linkage statique
-// c-a-d que le code de glew est directement injecte dans l'executable
 #define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-// les repertoires d'includes sont:
-// ../libs/glfw-3.3/include			fenetrage
-// ../libs/glew-2.1.0/include		extensions OpenGL
-// ../libs/stb						gestion des images (entre autre)
-
-// les repertoires des libs sont (en 64-bit):
-// ../libs/glfw-3.3/lib-vc2015
-// ../libs/glew-2.1.0/lib/Release/x64
-
-// Pensez a copier les dll dans le repertoire x64/Debug, cad:
-// glfw-3.3/lib-vc2015/glfw3.dll
-// glew-2.1.0/bin/Release/x64/glew32.dll		si pas GLEW_STATIC
-
-// _WIN32 indique un programme Windows
-// _MSC_VER indique la version du compilateur VC++
 #if defined(_WIN32) && defined(_MSC_VER)
 #pragma comment(lib, "glfw3dll.lib")
 #pragma comment(lib, "glew32s.lib")			// glew32.lib si pas GLEW_STATIC
@@ -40,6 +19,7 @@
 #include "PointLight.h"
 #include "SpotLight.h"
 #include "Material.h"
+#include "Model.h"
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
@@ -50,11 +30,18 @@
 const float WIDTH = 1280;
 const float HEIGHT = 720;
 
-GLShader g_BasicShader;
-uint32_t basicProgram;
+#pragma region Models & Framebuffer
+GLShader g_SuzShader;
+uint32_t suzProgram;
 GLuint VBO;
 GLuint IBO;
 GLuint VAO;
+
+GLShader g_CubeShader;
+uint32_t cubeProgram;
+GLuint VBOcube;
+GLuint IBOcube;
+GLuint VAOcube;
 
 GLShader g_ScreenShader;
 uint32_t screenProgram;
@@ -77,7 +64,9 @@ Mat4* matriceScale = new Mat4();
 Mat4* matriceTranslation = new Mat4();
 
 Mat4* worldMatrix = new Mat4();
+#pragma endregion 
 
+#pragma region Lights
 PointLight* light = new PointLight();
 DirectionalLight* dLight = new DirectionalLight();
 SpotLight* sLight = new SpotLight();
@@ -85,6 +74,7 @@ Material* suzanneMat = new Material();
 
 float skyColor[] = { 0.8f, 0.8f, .8f };
 float groundColor[] = { 0.3f, 0.3f, 0.3f };
+#pragma endregion 
 
 const std::string MODEL_PATH = "../data/suzanne3.obj";
 const std::string MATERIAL_PATH = "../data/";
@@ -92,6 +82,7 @@ const std::string MATERIAL_PATH = "../data/";
 std::vector<Vertex3D> vertices;
 std::vector<uint32_t> indices;
 
+#pragma region Camera & Orbitale Parameter
 float viewPos[] = { 0.f, 5.f, 5.f };
 float targetPos[] = { 0.f,0.f,0.f };
 float upWorld[] = { 0.f,1.f,0.f };
@@ -108,6 +99,9 @@ float lastYPos = 0.f;
 float sensitivityMoveCam = 0.1f;
 float theta = 0.f;
 float phi = 0.f;
+#pragma endregion 
+
+Model* suzanneModel = new Model("../data/suzanne3.obj", "Basic.vs", "Basic.fs", "../data/");
 
 void CheckExistingVertex(Vertex3D &v)
 {
@@ -192,13 +186,13 @@ bool Initialize()
 			<< std::endl;
 	}
 
-	g_BasicShader.LoadVertexShader("Basic.vs");
-	g_BasicShader.LoadFragmentShader("Basic.fs");
-	g_BasicShader.Create();
-	basicProgram = g_BasicShader.GetProgram();
+	g_SuzShader.LoadVertexShader("Basic.vs");
+	g_SuzShader.LoadFragmentShader("Basic.fs");
+	g_SuzShader.Create();
+	suzProgram = g_SuzShader.GetProgram();
 	
 	g_ScreenShader.LoadVertexShader("PostRender.vs");
-	g_ScreenShader.LoadFragmentShader("PostRender.fs");
+	g_ScreenShader.LoadFragmentShader("BlackOrWhite.fs");
 	g_ScreenShader.Create();
 	screenProgram = g_ScreenShader.GetProgram();
 	
@@ -215,7 +209,7 @@ bool Initialize()
 	
 	#pragma region Initialisation_Du_Triangle
 	
-	glUseProgram(basicProgram);
+	glUseProgram(suzProgram);
 
 	LoadModel();
 
@@ -224,22 +218,22 @@ bool Initialize()
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex3D) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 
 	// ---------------- Position
-	int loc_position = glGetAttribLocation(basicProgram, "a_position");
+	int loc_position = glGetAttribLocation(suzProgram, "a_position");
 	glEnableVertexAttribArray(loc_position);
 	glVertexAttribPointer(loc_position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, x)));
 
 	// ---------------- Normals
-	int normals = glGetAttribLocation(basicProgram, "a_normals");
+	int normals = glGetAttribLocation(suzProgram, "a_normals");
 	glEnableVertexAttribArray(normals);
 	glVertexAttribPointer(normals, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, nx)));
 	
 	// ---------------- Texcoord
-	int texCoords = glGetAttribLocation(basicProgram, "a_texcoords");
+	int texCoords = glGetAttribLocation(suzProgram, "a_texcoords");
 	glEnableVertexAttribArray(texCoords);
 	glVertexAttribPointer(texCoords, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, u)));
 	
 	// ---------------- Couleur
-	int loc_color = glGetAttribLocation(basicProgram, "a_color");
+	int loc_color = glGetAttribLocation(suzProgram, "a_color");
 	glEnableVertexAttribArray(loc_color);
 	glVertexAttribPointer(loc_color, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, r)));
 
@@ -324,12 +318,14 @@ void Shutdown()
 	glDeleteTextures(1, &TEX_DEP);
 	glDeleteTextures(1, &TEX);
 	glDeleteVertexArrays(1, &VAO);
-	g_BasicShader.Destroy();
+	glDeleteBuffers(1, &VBOscreen);
+	glDeleteVertexArrays(1, &VAOscreen);
+	g_SuzShader.Destroy();
+	g_ScreenShader.Destroy();
 }
 
 void Render(GLFWwindow* window)
 {
-	// etape a. A vous de recuperer/passer les variables WIDTH/HEIGHT
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
@@ -342,7 +338,7 @@ void Render(GLFWwindow* window)
 	glViewport(0, 0, WIDTH, HEIGHT);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glUseProgram(basicProgram);
+	glUseProgram(suzProgram);
 	
 	glBindVertexArray(VAO);
 	
@@ -364,20 +360,10 @@ void RenderPostPro(GLFWwindow * window)
 	glBindVertexArray(VAOscreen);
 	glBindTexture(GL_TEXTURE_2D, TEX);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
-	
-	//glBlitFramebuffer(0, 0, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT, GL_COLOR_BUFFER_BIT, GL_LINEAR);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
-	//float forward[3];
-
-	//float distance = 0.f;
-
-	//distanceBetweenCamAndTarget = std::sqrt(std::pow(viewPos[0] - targetPos[0], 2) +
-	//	std::pow(viewPos[1] - targetPos[1], 2) + 
-	//	std::pow(viewPos[2] - targetPos[2], 2));
-	//
 	if (distanceBetweenCamAndTarget >= zoomMaxValue - 0.1f && yoffset < 0)
 		return;
 
@@ -392,23 +378,16 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 	viewPos[0] = distanceBetweenCamAndTarget * std::cos(newTheta) * std::cos(newPhi);
 	viewPos[1] = distanceBetweenCamAndTarget * std::sin(newTheta);
 	viewPos[2] = distanceBetweenCamAndTarget * std::cos(newTheta) * std::sin(newPhi);
-	
-	//
-	//for(int i = 0; i < 3; i++)
-	//{
-	//	forward[i] = matriceView->matrice[i * 4 + 2 ];
-	//	viewPos[i] -= forward[i] * yoffset * sensitivityZoomCam;
-	//}
 }
 
 void cursor_callback(GLFWwindow* window, double xpos, double ypos)
 {
-	//if(firstMouse)
-	//{
-	//	lastXPos = xpos;
-	//	lastYPos = ypos;
-	//	firstMouse = false;
-	//}
+	if(firstMouse)
+	{
+		lastXPos = xpos;
+		lastYPos = ypos;
+		firstMouse = false;
+	}
 
 	float xoffset = xpos - lastXPos;
 	float yoffset = lastYPos - ypos;
@@ -470,7 +449,7 @@ int main(void)
 		return -1;
 	}
 
-	uint32_t basicProgram = g_BasicShader.GetProgram();
+	uint32_t basicProgram = g_SuzShader.GetProgram();
 	glUseProgram(basicProgram);
 	
 #pragma region MATRICES
