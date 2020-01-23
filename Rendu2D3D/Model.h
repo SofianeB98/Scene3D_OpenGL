@@ -40,8 +40,53 @@ class Model
 		//Model World Matice
 		Mat4* worldMatrix;
 
+		//Shader Location
+		int loc_position;
+		int normals;
+		int texCoords;
+		int loc_color;
+
+		int matriceProjLocation;
+		int matriceWorld;
+		int viewLocation;
+
+		int lightPositionLoc;
+		int lightColorLoc;
+		int lightSpecLoc;
+		int ambiantStrLoc;
+		int attenuationConstant;
+		int attenuationLinear;
+		int attenuationQuadratic;
+
+		int dlightPositionLoc;
+		int dlightColorLoc;
+		int dlightSpecLoc;
+		int dambiantStrLoc;
+
+		int slightDirLoc;
+		int slightPositionLoc;
+		int slightColorLoc;
+		int slightSpecLoc;
+		int sambiantStrLoc;
+		int scutoffLoc;
+		int soutCutoffLoc;
+
+		int skyColorLoc;
+		int groundColorLoc;
+
+		int viewPosLoc;
+
+		int matDiffLoc;
+		int matAmbLoc;
+		int matSpecLoc;
+		int matShineLoc;
+	
 		Model();
 		Model(char* modelPath, char* vShaderName, char* fShaderName, char* materialPath);
+		//Model(Model& cop);
+
+		Model& operator=(Model mod);
+		void swap(Model& mod);
 		
 		~Model()
 		{

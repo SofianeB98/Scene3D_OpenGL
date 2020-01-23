@@ -1,5 +1,6 @@
 #include "Mat4.h"
 #include <cmath>
+#include <iostream>
 
 #define M_PI 3.141592653589793238462643383
 
@@ -14,9 +15,37 @@ Mat4::Mat4()
 	}
 }
 
+Mat4::Mat4(Mat4& cop)
+{
+	this->matriceSizeHeight = cop.matriceSizeHeight;
+	this->matriceSizeWidth = cop.matriceSizeWidth;
+
+	for (int i = 0; i < this->matriceSizeHeight; i++)
+	{
+		for (int j = 0; j < this->matriceSizeWidth; j++)
+		{
+			this->matrice[i * this->matriceSizeHeight + j] = cop.matrice[i * this->matriceSizeHeight + j];
+		}
+	}
+}
+
 Mat4::~Mat4()
 {
 	delete[] this->matrice;
+}
+
+Mat4& Mat4::operator=(Mat4 m)
+{
+	this->swap(m);
+	
+	return *this;
+}
+
+void Mat4::swap(Mat4& m)
+{
+	std::swap(this->matriceSizeHeight, m.matriceSizeHeight);
+	std::swap(this->matriceSizeWidth, m.matriceSizeWidth);
+	std::swap(this->matrice, m.matrice);
 }
 
 void Mat4::RotateZ(float angle)

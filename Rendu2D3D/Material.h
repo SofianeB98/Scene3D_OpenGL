@@ -8,5 +8,10 @@ struct Material
 	float matShine;
 
 	Material();
+	Material(Material& mat);
+
+	Material& operator=(Material mat);
+	void swap(Material& mat);
+	
 	~Material(); //destructeur
 };

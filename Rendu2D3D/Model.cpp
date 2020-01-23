@@ -5,29 +5,106 @@
 
 Model::Model()
 {
-	
+
 }
 
 Model::Model(char* modelPath, char* vShaderName, char* fShaderName, char* materialPath)
 {
 	//Assignation des path et du shader name
-	this->modelPath = modelPath;
+		this->modelPath = modelPath;
 	this->materialPath = materialPath;
 	this->vShaderName = vShaderName;
 	this->fShaderName = fShaderName;
-		
+
 	//Initialisation de la matrice du model
-	this->matriceTranslation = new Mat4();
+		this->matriceTranslation = new Mat4();
 	this->matriceRot = new Mat4();
 	this->matriceScale = new Mat4();
-	
+
 	this->worldMatrix = new Mat4();
-	
-	this->matriceTranslation->Translate(0.f, 0.f, 0.f);
+
+	this->matriceTranslation->Translate(05.f, 0.f, 0.f);
 	this->matriceScale->Scale(1.0f);
-	
+
 	this->worldMatrix = this->worldMatrix->Multiply(*this->matriceScale, *this->matriceRot);
 	this->worldMatrix = this->worldMatrix->Multiply(*this->worldMatrix, *this->matriceTranslation);
+}
+
+//Model::Model(Model& cop)
+//{
+//	this->swap(cop);
+//}
+
+Model& Model::operator=(Model mod)
+{
+	this->swap(mod);
+	
+	return *this;
+}
+
+void Model::swap(Model& mod)
+{
+	std::swap(this->modelPath ,mod.modelPath);
+	std::swap(this->materialPath ,mod.materialPath);
+	std::swap(this->vShaderName ,mod.vShaderName);
+	std::swap(this->fShaderName ,mod.fShaderName);
+
+	std::swap(this->vertices ,mod.vertices);
+	std::swap(this->indices ,mod.indices);
+
+	std::swap(this->g_BasicShader ,mod.g_BasicShader);
+	std::swap(this->basicProgram ,mod.basicProgram);
+
+	std::swap(this->IBO ,mod.IBO);
+	std::swap(this->VAO ,mod.VAO);
+	std::swap(this->VBO ,mod.VBO);
+
+	std::swap(this->loc_position ,mod.loc_position);
+	std::swap(this->normals ,mod.normals);
+	std::swap(this->texCoords ,mod.texCoords);
+	std::swap(this->loc_color ,mod.loc_color);
+
+	std::swap(this->matriceProjLocation ,mod.matriceProjLocation);
+	std::swap(this->matriceWorld ,mod.matriceWorld);
+	std::swap(this->viewLocation ,mod.viewLocation);
+
+	std::swap(this->lightPositionLoc ,mod.lightPositionLoc);
+	std::swap(this->lightColorLoc ,mod.lightColorLoc);
+	std::swap(this->lightSpecLoc ,mod.lightSpecLoc);
+	std::swap(this->ambiantStrLoc ,mod.ambiantStrLoc);
+	std::swap(this->attenuationConstant ,mod.attenuationConstant);
+	std::swap(this->attenuationLinear ,mod.attenuationLinear);
+	std::swap(this->attenuationQuadratic ,mod.attenuationQuadratic);
+
+	std::swap(this->dlightPositionLoc ,mod.dlightPositionLoc);
+	std::swap(this->dlightColorLoc ,mod.dlightColorLoc);
+	std::swap(this->dlightSpecLoc ,mod.dlightSpecLoc);
+	std::swap(this->dambiantStrLoc ,mod.dambiantStrLoc);
+
+	std::swap(this->slightDirLoc ,mod.slightDirLoc);
+	std::swap(this->slightPositionLoc ,mod.slightPositionLoc);
+	std::swap(this->slightColorLoc ,mod.slightColorLoc);
+	std::swap(this->slightSpecLoc ,mod.slightSpecLoc);
+	std::swap(this->sambiantStrLoc ,mod.sambiantStrLoc);
+	std::swap(this->scutoffLoc ,mod.scutoffLoc);
+	std::swap(this->soutCutoffLoc ,mod.soutCutoffLoc);
+
+	std::swap(this->skyColorLoc ,mod.skyColorLoc);
+	std::swap(this->groundColorLoc ,mod.groundColorLoc);
+
+	std::swap(this->viewPosLoc ,mod.viewPosLoc);
+
+	std::swap(this->matDiffLoc ,mod.matDiffLoc);
+	std::swap(this->matAmbLoc ,mod.matAmbLoc);
+	std::swap(this->matSpecLoc ,mod.matSpecLoc);
+	std::swap(this->matShineLoc ,mod.matShineLoc);
+
+	//mat4 et material a faire aussi
+	std::swap(this->mat ,mod.mat);
+	std::swap(this->matriceRot ,mod.matriceRot);
+	std::swap(this->matriceScale ,mod.matriceScale);
+	std::swap(this->matriceTranslation ,mod.matriceTranslation);
+	std::swap(this->worldMatrix ,mod.worldMatrix);
 }
 
 void Model::CheckExistingVertex(Vertex3D& v)
@@ -86,7 +163,7 @@ void Model::LoadModel()
 	}
 
 	mat = new Material();
-	
+
 	if (materials.size() > 0)
 	{
 		mat->matAmbiant[0] = materials[0].ambient[0];
@@ -111,4 +188,62 @@ void Model::CreateAndLoadShader()
 	this->g_BasicShader.LoadFragmentShader((const char*)this->fShaderName);
 	this->g_BasicShader.Create();
 	this->basicProgram = this->g_BasicShader.GetProgram();
+
+	//----Pos normal etc
+
+		loc_position = glGetAttribLocation(basicProgram, "a_position");
+	normals = glGetAttribLocation(basicProgram, "a_normals");
+	texCoords = glGetAttribLocation(basicProgram, "a_texcoords");
+	loc_color = glGetAttribLocation(basicProgram, "a_color");
+
+	//----Matrice
+
+		matriceProjLocation = glGetUniformLocation(basicProgram, "u_matriceProjection");
+	matriceWorld = glGetUniformLocation(basicProgram, "u_worldMatrix");
+	viewLocation = glGetUniformLocation(basicProgram, "u_view");
+
+	glUniformMatrix4fv(matriceWorld, 1, false, worldMatrix->matrice);
+
+	//----Lights
+
+		lightPositionLoc = glGetUniformLocation(basicProgram, "u_light.lightPosition");
+	lightColorLoc = glGetUniformLocation(basicProgram, "u_light.lightDiffuse");
+	lightSpecLoc = glGetUniformLocation(basicProgram, "u_light.lightSpecular");
+	ambiantStrLoc = glGetUniformLocation(basicProgram, "u_light.lightAmbient");
+
+	attenuationConstant = glGetUniformLocation(basicProgram, "u_light.constant");
+	attenuationLinear = glGetUniformLocation(basicProgram, "u_light.linear");
+	attenuationQuadratic = glGetUniformLocation(basicProgram, "u_light.quadratic");
+
+	dlightPositionLoc = glGetUniformLocation(basicProgram, "u_dLight.lightDirection");
+	dlightColorLoc = glGetUniformLocation(basicProgram, "u_dLight.lightDiffuse");
+	dlightSpecLoc = glGetUniformLocation(basicProgram, "u_dLight.lightSpecular");
+	dambiantStrLoc = glGetUniformLocation(basicProgram, "u_dLight.lightAmbient");
+
+	slightDirLoc = glGetUniformLocation(basicProgram, "u_sLight.lightDirection");
+	slightPositionLoc = glGetUniformLocation(basicProgram, "u_sLight.lightPosition");
+
+	slightColorLoc = glGetUniformLocation(basicProgram, "u_sLight.lightDiffuse");
+	slightSpecLoc = glGetUniformLocation(basicProgram, "u_sLight.lightSpecular");
+	sambiantStrLoc = glGetUniformLocation(basicProgram, "u_sLight.lightAmbient");
+
+	scutoffLoc = glGetUniformLocation(basicProgram, "u_sLight.cutoff");
+	soutCutoffLoc = glGetUniformLocation(basicProgram, "u_sLight.outerCutoff");
+
+	skyColorLoc = glGetUniformLocation(basicProgram, "u_skyColor");
+	groundColorLoc = glGetUniformLocation(basicProgram, "u_groundColor");
+
+	viewPosLoc = glGetUniformLocation(basicProgram, "u_viewPos");
+
+	//----Material
+		matDiffLoc = glGetUniformLocation(basicProgram, "u_material.diffuse");
+	matAmbLoc = glGetUniformLocation(basicProgram, "u_material.ambient");
+	matSpecLoc = glGetUniformLocation(basicProgram, "u_material.specular");
+	matShineLoc = glGetUniformLocation(basicProgram, "u_material.shininess");
+
+	glUniform3fv(matDiffLoc, 1, mat->matDiffuse);
+	glUniform3fv(matAmbLoc, 1, mat->matAmbiant);
+	glUniform3fv(matSpecLoc, 1, mat->matSpecular);
+	glUniform1f(matShineLoc, mat->matShine);
+
 }

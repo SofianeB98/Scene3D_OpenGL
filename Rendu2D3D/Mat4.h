@@ -8,8 +8,12 @@ struct Mat4
 	float matrice[16];
 
 	Mat4(); //constructeur
+	Mat4(Mat4& cop);
 	~Mat4(); //destructeur
 
+	Mat4& operator=(Mat4 m);
+	void swap(Mat4& m);
+	
 	void RotateZ(float angle);
 	void RotateX(float angle);
 	void RotateY(float angle);

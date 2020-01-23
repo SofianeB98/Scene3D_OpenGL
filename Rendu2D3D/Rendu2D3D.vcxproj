@@ -190,6 +190,8 @@
     <None Include="InvertColor.fs" />
     <None Include="PostRender.fs" />
     <None Include="sepia.fs" />
+    <None Include="SuzanneShader.fs" />
+    <None Include="SuzanneShader.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

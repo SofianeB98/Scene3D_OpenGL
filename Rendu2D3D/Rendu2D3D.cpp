@@ -37,12 +37,6 @@ GLuint VBO;
 GLuint IBO;
 GLuint VAO;
 
-GLShader g_CubeShader;
-uint32_t cubeProgram;
-GLuint VBOcube;
-GLuint IBOcube;
-GLuint VAOcube;
-
 GLShader g_ScreenShader;
 uint32_t screenProgram;
 GLuint VBOscreen;
@@ -102,6 +96,8 @@ float phi = 0.f;
 #pragma endregion 
 
 Model* suzanneModel = new Model("../data/suzanne3.obj", "SuzanneShader.vs", "SuzanneShader.fs", "../data/");
+
+std::vector<Model> models;
 
 int loc_position = 0;
 int normals = 0;
@@ -232,10 +228,57 @@ bool Initialize()
 	suzProgram = g_SuzShader.GetProgram();
 	
 	g_ScreenShader.LoadVertexShader("PostRender.vs");
-	g_ScreenShader.LoadFragmentShader("InvertColor.fs");
+	g_ScreenShader.LoadFragmentShader("sepia.fs");
 	g_ScreenShader.Create();
 	screenProgram = g_ScreenShader.GetProgram();
 
+	models.push_back(*suzanneModel);
+
+	for(int i = 0; i < models.size(); i++)
+	{
+		glGenVertexArrays(1, &models[i].VAO);
+		glGenBuffers(1, &models[i].VBO);
+
+		glBindVertexArray(models[i].VAO);
+
+		models[i].LoadModel();
+		models[i].CreateAndLoadShader();
+
+		glBindBuffer(GL_ARRAY_BUFFER, models[i].VBO);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex3D) * models[i].vertices.size(), &models[i].vertices[0], GL_STATIC_DRAW);
+		glUseProgram(models[i].basicProgram);
+
+		// ---------------- Position
+		models[i].loc_position = glGetAttribLocation(models[i].basicProgram, "a_position");
+		glEnableVertexAttribArray(models[i].loc_position);
+		glVertexAttribPointer(models[i].loc_position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, x)));
+
+		// ---------------- Normals
+		models[i].normals = glGetAttribLocation(models[i].basicProgram, "a_normals");
+		glEnableVertexAttribArray(models[i].normals);
+		glVertexAttribPointer(models[i].normals, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, nx)));
+
+		// ---------------- Texcoord
+		models[i].texCoords = glGetAttribLocation(models[i].basicProgram, "a_texcoords");
+		glEnableVertexAttribArray(models[i].texCoords);
+		glVertexAttribPointer(models[i].texCoords, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, u)));
+
+		// ---------------- Couleur
+		models[i].loc_color = glGetAttribLocation(models[i].basicProgram, "a_color");
+		glEnableVertexAttribArray(models[i].loc_color);
+		glVertexAttribPointer(models[i].loc_color, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, r)));
+
+		glGenBuffers(1, &models[i].IBO);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, models[i].IBO);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * models[i].indices.size(), &models[i].indices[0], GL_STATIC_DRAW);
+
+		glBindVertexArray(0);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
+	
 #ifdef WIN32
 	wglSwapIntervalEXT(1);
 #endif
@@ -244,49 +287,49 @@ bool Initialize()
 	std::cout << "Vendor : " << glGetString(GL_VENDOR) << std::endl;
 	std::cout << "Renderer : " << glGetString(GL_RENDERER) << std::endl;
 
-#pragma region Model Loading
-	suzanneModel->CreateAndLoadShader();
-	glGenVertexArrays(1, &suzanneModel->VAO);
-	glGenBuffers(1, &suzanneModel->VBO);
-
-	glBindVertexArray(suzanneModel->VAO);
-
-	suzanneModel->LoadModel();
-	
-	glBindBuffer(GL_ARRAY_BUFFER, suzanneModel->VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex3D) * suzanneModel->vertices.size(), &suzanneModel->vertices[0], GL_STATIC_DRAW);
-	glUseProgram(suzanneModel->basicProgram);
-
-	// ---------------- Position
-	loc_position = glGetAttribLocation(suzanneModel->basicProgram, "a_position");
-	glEnableVertexAttribArray(loc_position);
-	glVertexAttribPointer(loc_position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, x)));
-
-	// ---------------- Normals
-	normals = glGetAttribLocation(suzanneModel->basicProgram, "a_normals");
-	glEnableVertexAttribArray(normals);
-	glVertexAttribPointer(normals, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, nx)));
-
-	// ---------------- Texcoord
-	texCoords = glGetAttribLocation(suzanneModel->basicProgram, "a_texcoords");
-	glEnableVertexAttribArray(texCoords);
-	glVertexAttribPointer(texCoords, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, u)));
-
-	// ---------------- Couleur
-	loc_color = glGetAttribLocation(suzanneModel->basicProgram, "a_color");
-	glEnableVertexAttribArray(loc_color);
-	glVertexAttribPointer(loc_color, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, r)));
-
-	glGenBuffers(1, &suzanneModel->IBO);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, suzanneModel->IBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * suzanneModel->indices.size(), &suzanneModel->indices[0], GL_STATIC_DRAW);
-
-	glBindVertexArray(0);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-#pragma endregion 
+//#pragma region Model Loading
+//	glGenVertexArrays(1, &suzanneModel->VAO);
+//	glGenBuffers(1, &suzanneModel->VBO);
+//
+//	glBindVertexArray(suzanneModel->VAO);
+//
+//	suzanneModel->LoadModel();
+//	suzanneModel->CreateAndLoadShader();
+//
+//	glBindBuffer(GL_ARRAY_BUFFER, suzanneModel->VBO);
+//	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex3D) * suzanneModel->vertices.size(), &suzanneModel->vertices[0], GL_STATIC_DRAW);
+//	glUseProgram(suzanneModel->basicProgram);
+//
+//	// ---------------- Position
+//	suzanneModel->loc_position = glGetAttribLocation(suzanneModel->basicProgram, "a_position");
+//	glEnableVertexAttribArray(suzanneModel->loc_position);
+//	glVertexAttribPointer(suzanneModel->loc_position, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, x)));
+//
+//	// ---------------- Normals
+//	suzanneModel->normals = glGetAttribLocation(suzanneModel->basicProgram, "a_normals");
+//	glEnableVertexAttribArray(suzanneModel->normals);
+//	glVertexAttribPointer(suzanneModel->normals, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, nx)));
+//
+//	// ---------------- Texcoord
+//	suzanneModel->texCoords = glGetAttribLocation(suzanneModel->basicProgram, "a_texcoords");
+//	glEnableVertexAttribArray(suzanneModel->texCoords);
+//	glVertexAttribPointer(suzanneModel->texCoords, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, u)));
+//
+//	// ---------------- Couleur
+//	suzanneModel->loc_color = glGetAttribLocation(suzanneModel->basicProgram, "a_color");
+//	glEnableVertexAttribArray(suzanneModel->loc_color);
+//	glVertexAttribPointer(suzanneModel->loc_color, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, r)));
+//
+//	glGenBuffers(1, &suzanneModel->IBO);
+//
+//	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, suzanneModel->IBO);
+//	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * suzanneModel->indices.size(), &suzanneModel->indices[0], GL_STATIC_DRAW);
+//
+//	glBindVertexArray(0);
+//
+//	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+//	glBindBuffer(GL_ARRAY_BUFFER, 0);
+//#pragma endregion 
 	
 #pragma region Initialisation_Du_Singe
 	glGenVertexArrays(1, &VAO);
@@ -397,18 +440,33 @@ void Shutdown()
 {
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &IBO);
+	glDeleteVertexArrays(1, &VAO);
+	
 	glDeleteFramebuffers(1, &FBO);
 	glDeleteTextures(1, &TEX_DEP);
 	glDeleteTextures(1, &TEX);
-	glDeleteVertexArrays(1, &VAO);
+
 	glDeleteBuffers(1, &VBOscreen);
 	glDeleteVertexArrays(1, &VAOscreen);
+	
 	g_SuzShader.Destroy();
 	g_ScreenShader.Destroy();
+
+	for(int i = 0; i < models.size(); i ++)
+	{
+		glDeleteBuffers(1, &models[i].VBO);
+		glDeleteBuffers(1, &models[i].IBO);
+		glDeleteVertexArrays(1, &models[i].VAO);
+		models[i].g_BasicShader.Destroy();
+	}
+
+	models.empty();
 }
 
 void Render(GLFWwindow* window)
 {
+	matriceView->LookAt(viewPos, targetPos, upWorld);
+	
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
@@ -425,10 +483,9 @@ void Render(GLFWwindow* window)
 	glBindVertexArray(VAO);
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
-	//
+	// --- Suzanne
 	glUniformMatrix4fv(matriceWorld, 1, false, worldMatrix->matrice);
 
-	matriceView->LookAt(viewPos, targetPos, upWorld);
 	glUniformMatrix4fv(viewLocation, 1, false, matriceView->matrice);
 	glUniform3fv(viewPosLoc, 1, viewPos);
 
@@ -438,12 +495,59 @@ void Render(GLFWwindow* window)
 
 	glUniform3fv(slightPositionLoc, 1, sLight->lightPosition);
 	glUniform3fv(slightDirLoc, 1, sLight->lightDirection);
-	//
+	// --- Suzanne
 	
-	//glUseProgram(suzanneModel->basicProgram);
-	//glBindVertexArray(suzanneModel->VAO);
-	//glDrawElements(GL_TRIANGLES, suzanneModel->indices.size(), GL_UNSIGNED_INT, 0);
+	for(int i = 0; i < models.size(); i++)
+	{
+		glUseProgram(models[i].basicProgram);
 
+		glBindVertexArray(models[i].VAO);
+		glDrawElements(GL_TRIANGLES, models[i].indices.size(), GL_UNSIGNED_INT, 0);
+
+		// --- Model
+		glUniformMatrix4fv(models[i].matriceProjLocation, 1, false, matriceProjection->matrice);
+		glUniformMatrix4fv(models[i].matriceWorld, 1, false, models[i].worldMatrix->matrice);
+
+		glUniformMatrix4fv(models[i].viewLocation, 1, false, matriceView->matrice);
+		glUniform3fv(models[i].viewPosLoc, 1, viewPos);
+
+		glUniform3fv(models[i].lightPositionLoc, 1, light->lightPosition);
+
+		glUniform3fv(models[i].dlightPositionLoc, 1, dLight->lightDirection);
+
+		glUniform3fv(models[i].slightPositionLoc, 1, sLight->lightPosition);
+		glUniform3fv(models[i].slightDirLoc, 1, sLight->lightDirection);
+
+		glUniform3fv(models[i].lightColorLoc, 1, light->lightDiffuse);
+		glUniform3fv(models[i].lightSpecLoc, 1, light->lightSpecular);
+
+		glUniform1f(models[i].attenuationConstant, light->constant);
+		glUniform1f(models[i].attenuationLinear, light->linear);
+		glUniform1f(models[i].attenuationQuadratic, light->quadratic);
+
+		glUniform3fv(models[i].ambiantStrLoc, 1, light->lightAmbient);
+		glUniform3fv(models[i].dlightColorLoc, 1, dLight->lightDiffuse);
+		glUniform3fv(models[i].dlightSpecLoc, 1, dLight->lightSpecular);
+		glUniform3fv(models[i].dambiantStrLoc, 1, dLight->lightAmbient);
+
+		glUniform3fv(models[i].slightColorLoc, 1, sLight->lightDiffuse);
+		glUniform3fv(models[i].slightSpecLoc, 1, sLight->lightSpecular);
+		glUniform3fv(models[i].sambiantStrLoc, 1, sLight->lightAmbient);
+
+		glUniform1f(models[i].scutoffLoc, sLight->cutoff);
+		glUniform1f(models[i].soutCutoffLoc, sLight->outerCutoff);
+
+		glUniform3fv(models[i].skyColorLoc, 1, skyColor);
+		glUniform3fv(models[i].groundColorLoc, 1, groundColor);
+
+		glUniform3fv(models[i].matDiffLoc, 1, models[i].mat->matDiffuse);
+		glUniform3fv(models[i].matAmbLoc, 1, models[i].mat->matAmbiant);
+		glUniform3fv(models[i].matSpecLoc, 1, models[i].mat->matSpecular);
+		glUniform1f(models[i].matShineLoc, models[i].mat->matShine);
+	}
+	
+	// --- Model
+	
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 }
 
@@ -548,14 +652,13 @@ int main(void)
 		return -1;
 	}
 
-	uint32_t basicProgram = g_SuzShader.GetProgram();
-	glUseProgram(basicProgram);
+	suzProgram = g_SuzShader.GetProgram();
 	
 #pragma region MATRICES
 
-	matriceProjLocation = glGetUniformLocation(basicProgram, "u_matriceProjection");
-	matriceWorld = glGetUniformLocation(basicProgram, "u_worldMatrix");
-	viewLocation = glGetUniformLocation(basicProgram, "u_view");
+	matriceProjLocation = glGetUniformLocation(suzProgram, "u_matriceProjection");
+	matriceWorld = glGetUniformLocation(suzProgram, "u_worldMatrix");
+	viewLocation = glGetUniformLocation(suzProgram, "u_view");
 	
 	aspect = WIDTH / HEIGHT;
 
@@ -577,14 +680,14 @@ int main(void)
 
 #pragma region LIGHT
 	// --- Point light
-	lightPositionLoc = glGetUniformLocation(basicProgram, "u_light.lightPosition");
-	lightColorLoc = glGetUniformLocation(basicProgram, "u_light.lightDiffuse");
-	lightSpecLoc = glGetUniformLocation(basicProgram, "u_light.lightSpecular");
-	ambiantStrLoc = glGetUniformLocation(basicProgram, "u_light.lightAmbient");
+	lightPositionLoc = glGetUniformLocation(suzProgram, "u_light.lightPosition");
+	lightColorLoc = glGetUniformLocation(suzProgram, "u_light.lightDiffuse");
+	lightSpecLoc = glGetUniformLocation(suzProgram, "u_light.lightSpecular");
+	ambiantStrLoc = glGetUniformLocation(suzProgram, "u_light.lightAmbient");
 	
-	attenuationConstant = glGetUniformLocation(basicProgram, "u_light.constant");
-	attenuationLinear = glGetUniformLocation(basicProgram, "u_light.linear");
-	attenuationQuadratic = glGetUniformLocation(basicProgram, "u_light.quadratic");
+	attenuationConstant = glGetUniformLocation(suzProgram, "u_light.constant");
+	attenuationLinear = glGetUniformLocation(suzProgram, "u_light.linear");
+	attenuationQuadratic = glGetUniformLocation(suzProgram, "u_light.quadratic");
 	
 	light->setPosition(-2.0f, 2.0f, -2.0f);
 	light->setAmbiant(0.86f, 0.765f, 0.1f);
@@ -601,10 +704,10 @@ int main(void)
 	// --- End point light
 
 	// --- Directional light
-	dlightPositionLoc = glGetUniformLocation(basicProgram, "u_dLight.lightDirection");
-	dlightColorLoc = glGetUniformLocation(basicProgram, "u_dLight.lightDiffuse");
-	dlightSpecLoc = glGetUniformLocation(basicProgram, "u_dLight.lightSpecular");
-	dambiantStrLoc = glGetUniformLocation(basicProgram, "u_dLight.lightAmbient");
+	dlightPositionLoc = glGetUniformLocation(suzProgram, "u_dLight.lightDirection");
+	dlightColorLoc = glGetUniformLocation(suzProgram, "u_dLight.lightDiffuse");
+	dlightSpecLoc = glGetUniformLocation(suzProgram, "u_dLight.lightSpecular");
+	dambiantStrLoc = glGetUniformLocation(suzProgram, "u_dLight.lightAmbient");
 
 	dLight->setDirection(1.f, 1.0f, -1.f);
 	
@@ -615,15 +718,15 @@ int main(void)
 	// --- End directional light
 
 	// --- Spot Light
-	slightDirLoc = glGetUniformLocation(basicProgram, "u_sLight.lightDirection");
-	slightPositionLoc = glGetUniformLocation(basicProgram, "u_sLight.lightPosition");
+	slightDirLoc = glGetUniformLocation(suzProgram, "u_sLight.lightDirection");
+	slightPositionLoc = glGetUniformLocation(suzProgram, "u_sLight.lightPosition");
 	
-	slightColorLoc = glGetUniformLocation(basicProgram, "u_sLight.lightDiffuse");
-	slightSpecLoc = glGetUniformLocation(basicProgram, "u_sLight.lightSpecular");
-	sambiantStrLoc = glGetUniformLocation(basicProgram, "u_sLight.lightAmbient");
+	slightColorLoc = glGetUniformLocation(suzProgram, "u_sLight.lightDiffuse");
+	slightSpecLoc = glGetUniformLocation(suzProgram, "u_sLight.lightSpecular");
+	sambiantStrLoc = glGetUniformLocation(suzProgram, "u_sLight.lightAmbient");
 
-	scutoffLoc = glGetUniformLocation(basicProgram, "u_sLight.cutoff");
-	soutCutoffLoc = glGetUniformLocation(basicProgram, "u_sLight.outerCutoff");
+	scutoffLoc = glGetUniformLocation(suzProgram, "u_sLight.cutoff");
+	soutCutoffLoc = glGetUniformLocation(suzProgram, "u_sLight.outerCutoff");
 	
 	sLight->setPosition(0,0,5.0f);
 	sLight->setDirection(0,0,-1.0f);
@@ -642,22 +745,22 @@ int main(void)
 	// --- End spot light
 
 	// --- Sky & Ground
-	skyColorLoc= glGetUniformLocation(basicProgram, "u_skyColor");
-	groundColorLoc = glGetUniformLocation(basicProgram, "u_groundColor");
+	skyColorLoc= glGetUniformLocation(suzProgram, "u_skyColor");
+	groundColorLoc = glGetUniformLocation(suzProgram, "u_groundColor");
 
 	glUniform3fv(skyColorLoc, 1, skyColor);
 	glUniform3fv(groundColorLoc, 1, groundColor);
 	// --- End Sky & ground
 #pragma endregion
 
-	viewPosLoc = glGetUniformLocation(basicProgram, "u_viewPos");
+	viewPosLoc = glGetUniformLocation(suzProgram, "u_viewPos");
 	glUniform3fv(viewPosLoc, 1, viewPos);
 	
 #pragma region MATERIAL
-	matDiffLoc = glGetUniformLocation(basicProgram, "u_material.diffuse");
-	matAmbLoc = glGetUniformLocation(basicProgram, "u_material.ambient");
-	matSpecLoc = glGetUniformLocation(basicProgram, "u_material.specular");
-	matShineLoc = glGetUniformLocation(basicProgram, "u_material.shininess");
+	matDiffLoc = glGetUniformLocation(suzProgram, "u_material.diffuse");
+	matAmbLoc = glGetUniformLocation(suzProgram, "u_material.ambient");
+	matSpecLoc = glGetUniformLocation(suzProgram, "u_material.specular");
+	matShineLoc = glGetUniformLocation(suzProgram, "u_material.shininess");
 	
 	glUniform3fv(matDiffLoc, 1, suzanneMat->matDiffuse);
 	glUniform3fv(matAmbLoc, 1, suzanneMat->matAmbiant);
@@ -668,6 +771,9 @@ int main(void)
 	distanceBetweenCamAndTarget = std::sqrt(std::pow(viewPos[0] - targetPos[0], 2) +
 		std::pow(viewPos[1] - targetPos[1], 2) +
 		std::pow(viewPos[2] - targetPos[2], 2));
+
+	//Boucle d'initialization de toutes les loc des model 
+
 	
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))

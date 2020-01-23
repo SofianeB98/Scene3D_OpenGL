@@ -112,5 +112,11 @@
     <None Include="sepia.fs">
       <Filter>Fichiers sources</Filter>
     </None>
+    <None Include="SuzanneShader.fs">
+      <Filter>Fichiers sources</Filter>
+    </None>
+    <None Include="SuzanneShader.vs">
+      <Filter>Fichiers sources</Filter>
+    </None>
   </ItemGroup>
 </Project>
