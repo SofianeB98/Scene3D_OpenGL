@@ -19,7 +19,7 @@ class Model
 	
 		//Model material
 		Material* mat;
-		//Texture tex;
+		GLuint diffuseTexture;
 	
 		//Model Shader
 		GLShader g_BasicShader;
@@ -80,6 +80,8 @@ class Model
 		int matAmbLoc;
 		int matSpecLoc;
 		int matShineLoc;
+
+		int texLocation;
 	
 		Model();
 		Model(char* modelPath, char* vShaderName, char* fShaderName, char* materialPath);

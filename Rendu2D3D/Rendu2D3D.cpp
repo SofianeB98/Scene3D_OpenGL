@@ -24,6 +24,9 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #define M_PI 3.141592653589793238462643383
 #define BUFFER_OFFSET(i) ((void*)(i))
 
@@ -72,6 +75,7 @@ float groundColor[] = { 0.3f, 0.3f, 0.3f };
 
 const std::string MODEL_PATH = "../data/suzanne3.obj";
 const std::string MATERIAL_PATH = "../data/";
+
 
 std::vector<Vertex3D> vertices;
 std::vector<uint32_t> indices;
@@ -212,6 +216,38 @@ void LoadModel()
 	}
 }
 
+GLuint LoadTexture(const char* path)
+{
+	// 1. chargement de la bitmap
+	int w, h, c;
+	uint8_t* data = stbi_load(path, &w, &h, &c, STBI_rgb_alpha);
+	// 2. creation du texture object OpenGL
+	GLuint TextureID = 0;
+	glGenTextures(1, &TextureID);
+	// 3. chargement et parametrage
+	// pour pouvoir travailler sur/avec la texture
+	// on doit d'abord la "bind" / attacher sur un identifiant
+	// en l'occurence GL_TEXTURE_2D
+	glBindTexture(GL_TEXTURE_2D, TextureID);
+	// les 6 premiers params definissent le stockage de la texture en VRAM (memoire video)
+	// les 3 derniers specifient l'image source
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, data);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+		GL_LINEAR);
+	// on remet la valeur par defaut (pas obligatoire mais preferable ici)
+	glBindTexture(GL_TEXTURE_2D, 0);
+	// 4. liberation de la memoire
+	stbi_image_free(data);
+	return TextureID;
+}
+
+void DestroyTexture(GLuint* textureID)
+{
+	glDeleteTextures(1, textureID);
+	textureID = 0;
+}
+
 bool Initialize()
 {
 	GLenum error = glewInit();
@@ -248,6 +284,10 @@ bool Initialize()
 	suzanneModel->LoadModel();
 	suzanneModel->CreateAndLoadShader();
 
+	suzanneModel->diffuseTexture = LoadTexture("../data/SuzanneTex.png");
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, suzanneModel->diffuseTexture);
+
 	glBindBuffer(GL_ARRAY_BUFFER, suzanneModel->VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex3D) * suzanneModel->vertices.size(), &suzanneModel->vertices[0], GL_STATIC_DRAW);
 	glUseProgram(suzanneModel->basicProgram);
@@ -272,6 +312,10 @@ bool Initialize()
 	glEnableVertexAttribArray(suzanneModel->loc_color);
 	glVertexAttribPointer(suzanneModel->loc_color, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, r)));
 
+	// ---------------- Texture
+	suzanneModel->texLocation = glGetAttribLocation(suzanneModel->basicProgram, "u_texture");
+	glUniform1i(suzanneModel->texLocation, suzanneModel->diffuseTexture);
+	
 	glGenBuffers(1, &suzanneModel->IBO);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, suzanneModel->IBO);
@@ -390,6 +434,8 @@ bool Initialize()
 
 void Shutdown()
 {
+	DestroyTexture(&suzanneModel->diffuseTexture);
+	
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &IBO);
 	glDeleteVertexArrays(1, &VAO);
@@ -448,6 +494,9 @@ void Render(GLFWwindow* window)
 
 	glUseProgram(suzanneModel->basicProgram);
 
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, suzanneModel->diffuseTexture);
+	
 	glBindVertexArray(suzanneModel->VAO);
 	glDrawElements(GL_TRIANGLES, suzanneModel->indices.size(), GL_UNSIGNED_INT, 0);
 
@@ -465,6 +514,12 @@ void Render(GLFWwindow* window)
 	glUniform3fv(suzanneModel->slightPositionLoc, 1, sLight->lightPosition);
 	glUniform3fv(suzanneModel->slightDirLoc, 1, sLight->lightDirection);
 
+	//int textureUnit = 0;
+	/*glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, suzanneModel->diffuseTexture);*/
+	//glUniform1i(suzanneModel->texLocation, suzanneModel->diffuseTexture);
+	
+	
 	// --- Model
 	
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
