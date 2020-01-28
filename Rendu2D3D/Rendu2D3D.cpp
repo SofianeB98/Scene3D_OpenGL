@@ -39,6 +39,7 @@ uint32_t suzProgram;
 GLuint VBO;
 GLuint IBO;
 GLuint VAO;
+GLuint diffuseTexture;
 
 GLShader g_ScreenShader;
 uint32_t screenProgram;
@@ -140,6 +141,8 @@ int matDiffLoc = 0;
 int matAmbLoc = 0;
 int matSpecLoc = 0;
 int matShineLoc = 0;
+
+int texLocation = 0;
 
 float aspect = WIDTH / HEIGHT;
 
@@ -334,6 +337,10 @@ bool Initialize()
 
 	LoadModel();
 
+	diffuseTexture = LoadTexture("../data/SingeTex.jpg");
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+	
 	glGenBuffers(1, &VBO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex3D) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
@@ -358,6 +365,10 @@ bool Initialize()
 	glEnableVertexAttribArray(loc_color);
 	glVertexAttribPointer(loc_color, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), BUFFER_OFFSET(offsetof(Vertex3D, r)));
 
+	// ---------------- Texture
+	texLocation = glGetAttribLocation(suzProgram, "u_texture");
+	glUniform1i(texLocation, diffuseTexture);
+	
 	//--IBO
 	glGenBuffers(1, &IBO);
 	
@@ -473,6 +484,10 @@ void Render(GLFWwindow* window)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(suzProgram);
+	
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+	
 	glBindVertexArray(VAO);
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 

@@ -50,6 +50,8 @@ uniform vec3 u_skyColor;
 uniform vec3 u_groundColor;
 uniform vec3 u_viewPos;
 
+uniform sampler2D u_texture;
+
 varying vec3 v_color;
 varying vec3 v_position;
 varying vec3 v_normals;
@@ -60,13 +62,14 @@ float gamma = 2.2;
 //Utils function
 vec3 ambientLight(vec3 str, vec3 color, vec3 norm)
 {
+	vec4 texture = texture2D(u_texture, v_texcoords);
 	vec3 up = str;
 	up.x = 0;
 	up.y = -1;
 	up.z = 0;
 	float hemisphere = dot(up, norm) * 0.5 + 0.5;
 
-	vec3 amb = str * color;
+	vec3 amb = str * color * texture.rgb;
 	amb = amb * mix(u_skyColor, u_groundColor, hemisphere);
 
 	return pow(amb, vec3(gamma));
@@ -74,8 +77,9 @@ vec3 ambientLight(vec3 str, vec3 color, vec3 norm)
 
 vec3 diffuseLight(vec3 norm, vec3 lightDir, vec3 lColor, vec3 mColor)
 {
+	vec4 texture = texture2D(u_texture, v_texcoords);
 	float diffuse = max(dot(norm, lightDir), 0.0);
-	vec3 dLight = lColor * (diffuse * mColor);
+	vec3 dLight = lColor * (diffuse * mColor * texture.rgb);
 
 	return dLight;
 }
