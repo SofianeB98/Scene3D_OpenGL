@@ -265,7 +265,7 @@ bool Initialize()
 	suzProgram = g_SuzShader.GetProgram();
 	
 	g_ScreenShader.LoadVertexShader("PostRender.vs");
-	g_ScreenShader.LoadFragmentShader("sepia.fs");
+	g_ScreenShader.LoadFragmentShader("InvertColor.fs");
 	g_ScreenShader.Create();
 	screenProgram = g_ScreenShader.GetProgram();
 
@@ -455,6 +455,9 @@ void Shutdown()
 	glDeleteBuffers(1, &suzanneModel->IBO);
 	glDeleteVertexArrays(1, &suzanneModel->VAO);
 	suzanneModel->g_BasicShader.Destroy();
+
+	glDeleteTextures(1, &diffuseTexture);
+	glDeleteTextures(1, &suzanneModel->diffuseTexture);
 	
 	glDeleteFramebuffers(1, &FBO);
 	glDeleteTextures(1, &TEX_DEP);
